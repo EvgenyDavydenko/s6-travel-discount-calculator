@@ -1,0 +1,13 @@
+
+services:
+    php82cli:
+        build: ./
+        container_name: applic-php82cli-bookworm
+        restart: always
+        ports:
+            - 8080:8000
+        volumes:
+            - ./:/var/www/html
+        tty: true
+        # symfony server:start
+        
