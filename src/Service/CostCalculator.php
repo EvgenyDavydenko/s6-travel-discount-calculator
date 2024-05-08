@@ -5,9 +5,9 @@ namespace App\Service;
 use App\DTO\CostDetailsDto;
 use DateTime;
 
-class TotalCostCalculator
+class CostCalculator
 {
-    public function calculateTotalCost(CostDetailsDto $costDetails): float
+    public function calculate(CostDetailsDto $costDetails): float
     {
         $baseCost = $costDetails->baseCost;
         $startDate = new DateTime($costDetails->startDate);
@@ -15,23 +15,24 @@ class TotalCostCalculator
         $paymentDate = new DateTime($costDetails->paymentDate);
 
         // Рассчитываем детскую скидку
-        $childDiscount = $this->calculateChildDiscount($startDate, $participantBirthdate, $baseCost);
-
+        $childDiscount = $this->childDiscount($startDate, $participantBirthdate, $baseCost);
+        
         // Рассчитываем стоимость с учетом детской скидки
         $costAfterChildDiscount = $baseCost - $childDiscount;
-
+        
+        //dd($costAfterChildDiscount);
         // Рассчитываем скидку за раннее бронирование
-        $earlyBookingDiscount = $this->calculateEarlyBookingDiscount($startDate, $paymentDate, $costAfterChildDiscount);
-
+        $earlyBookingDiscount = $this->earlyBookingDiscount($startDate, $paymentDate, $costAfterChildDiscount);
+        //dd($earlyBookingDiscount);
         // Итоговая стоимость
-        return $baseCost - $earlyBookingDiscount;
+        return $costAfterChildDiscount - $earlyBookingDiscount;
     }
 
-    private function calculateChildDiscount(DateTime $startDate, DateTime $participantBirthdate, float $cost): float
+    private function childDiscount(DateTime $startDate, DateTime $participantBirthdate, float $cost): float
     {
         // Рассчитываем возраст участника на момент начала путешествия
         $ageAtStart = $participantBirthdate->diff($startDate)->y;
-
+        
         // Применяем детскую скидку в зависимости от возраста
         if ($ageAtStart < 6) {
             // Скидка 80% для детей от 3 до 6 лет
@@ -46,46 +47,54 @@ class TotalCostCalculator
         } else return 0;
     }
 
-    private function calculateEarlyBookingDiscount(DateTime $startDate, DateTime $paymentDate, float $cost): float
+    private function earlyBookingDiscount(DateTime $startDate, DateTime $paymentDate, float $cost): float
     {
+        $paymentYear = $paymentDate->format('Y');
+        $nextPaymentYear = (int)$paymentYear + 1;
         $discount = 0.0;
 
-        // путешествия с датой старта с 1 апреля по 30 сентября следующего года
-        if ($startDate >= new DateTime('next year April 1') && $startDate <= new DateTime('next year September 30')) {
+        // путешествия с датой старта с 1 апреля по 30 сентября следующего года(не от настоящего момента, а от года оплаты)
+        if ($startDate >= new DateTime("April 1 $nextPaymentYear") && $startDate <= new DateTime("September 30 $nextPaymentYear")) {
             // при оплате весь ноябрь текущего и ранее скидка 7%
-            if ($paymentDate <= new DateTime('last day of November this year')) {
+            if ($paymentDate <= new DateTime("November 30 $paymentYear")) {
                 $discount = 0.07;
             // при оплате весь декабрь текущего года скидка 5%
-            } elseif ($paymentDate >= new DateTime('December 1 this year') && $paymentDate <= new DateTime('last day of December this year')) {
+            } elseif ($paymentDate >= new DateTime("December 1 $paymentYear") && $paymentDate <= new DateTime("December 31 $paymentYear")) {
                 $discount = 0.05;
-            // при оплате весь январь следующего года скидка 3%
-            } elseif ($paymentDate >= new DateTime('January 1 next year') && $paymentDate <= new DateTime('last day of January next year')) {
+            }
+        }
+        // путешествия с датой старта с 1 апреля по 30 сентября текущего года
+        if ($startDate >= new DateTime("April 1 $paymentYear") && $startDate <= new DateTime("September 30 $paymentYear")) {
+            // при оплате весь январь текущего года скидка 3% (года старта путешествия)
+            if ($paymentDate >= new DateTime("January 1 $paymentYear") && $paymentDate <= new DateTime("January 31 $paymentYear")) {
                 $discount = 0.03;
             }
         }
+
         // путешествия с датой старта с 1 октября текущего года по 14 января следующего года
-        elseif ($startDate >= new DateTime('this year October 1') && $startDate <= new DateTime('next year January 14')) {
+        if ($startDate >= new DateTime("October 1 $paymentYear") && $startDate <= new DateTime("January 14 $nextPaymentYear")) {
             // при оплате весь март текущего года и ранее скидка 7%
-            if ($paymentDate <= new DateTime('last day of March this year')) {
+            if ($paymentDate <= new DateTime("March 31 $paymentYear")) {
                 $discount = 0.07;
             // при оплате весь апрель текущего года скидка 5%
-            } elseif ($paymentDate >= new DateTime('April 1 this year') && $paymentDate <= new DateTime('last day of April this year')) {
+            } elseif ($paymentDate >= new DateTime("April 1 $paymentYear") && $paymentDate <= new DateTime("April 30 $paymentYear")) {
                 $discount = 0.05;
             // при оплате весь май текущего года скидка 3%
-            } elseif ($paymentDate < new DateTime('June 1 this year') && $paymentDate >= new DateTime('May 1 this year')) {
+            } elseif ($paymentDate >= new DateTime("May 1 $paymentYear") && $paymentDate <= new DateTime("May 31 $paymentYear")) {
                 $discount = 0.03;
             }
         }
+
         // путешествия с датой старта с 15 января следующего года и далее
-        elseif ($startDate >= new DateTime('next year January 15')) {
+        if ($startDate >= new DateTime("January 15 $nextPaymentYear")) {
             // при оплате весь август текущего года и ранее скидка 7%
-            if ($paymentDate <= new DateTime('last day of August this year')) {
+            if ($paymentDate <= new DateTime("August 31 $paymentYear")) {
                 $discount = 0.07;
             // весь сентябрь текущего года - 5%
-            } elseif ($paymentDate >= new DateTime('September 1 this year') && $paymentDate <= new DateTime('last day of September this year')) {
+            } elseif ($paymentDate >= new DateTime("September 1 $paymentYear") && $paymentDate <= new DateTime("September 30 $paymentYear")) {
                 $discount = 0.05;
             // весь октябрь текущего года - 3%
-            } elseif ($paymentDate >= new DateTime('October 1 this year') && $paymentDate <= new DateTime('last day of October this year')) {
+            } elseif ($paymentDate >= new DateTime("October 1 $paymentYear") && $paymentDate <= new DateTime("October 31 $paymentYear")) {
                 $discount = 0.03;
             }
         }

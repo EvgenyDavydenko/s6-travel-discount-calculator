@@ -7,7 +7,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use App\Service\TotalCostCalculator;
+use App\Service\CostCalculator;
 use App\DTO\CostDetailsDto;
 
 class DiscountController extends AbstractController
@@ -17,15 +17,15 @@ class DiscountController extends AbstractController
     public function calculateTotalCost(
         Request $request,
         ValidatorInterface $validator,
-        TotalCostCalculator $totalCostCalculator
+        CostCalculator $costCalculator
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         $costDetails = new CostDetailsDto();
         $costDetails->baseCost = $data['baseCost'];
-        $costDetails->startDate = $data['startDate'];
         $costDetails->participantBirthdate = $data['participantBirthdate'];
+        $costDetails->startDate = $data['startDate'];
         $costDetails->paymentDate = $data['paymentDate'];
 
         $errors = $validator->validate($costDetails);
@@ -39,10 +39,10 @@ class DiscountController extends AbstractController
         }
 
         // Данные прошли валидацию, передаем объект costDetails в сервис
-        $totalCost = $totalCostCalculator->calculateTotalCost($costDetails);
+        $cost = $costCalculator->calculate($costDetails);
 
         // Возвращаем итоговую стоимость в ответе
-        return $this->json(['итоговая стоимость' => $totalCost]);
+        return $this->json(['итоговая стоимость' => $cost]);
     }
 
 }
