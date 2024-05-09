@@ -9,3 +9,7 @@ symfony server:start
 ```
 composer require serializer validator
 ```
+4.  пишем тесты
+```
+composer require --dev phpunit/phpunit symfony/test-pack
+```
